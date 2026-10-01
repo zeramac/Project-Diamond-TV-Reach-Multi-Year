@@ -221,7 +221,7 @@ function outputFileName(category, breakdown, period){
   return sanitizeName(category + " Monthly Reach Report by " + breakdown + " ao " + period) + ".xlsx";
 }
 
-async function buildWorkbook(parsed){
+async function buildWorkbook(parsed, period){
   const wb = new ExcelJS.Workbook();
   const thin = {style:"thin", color:{argb:"FF000000"}};
   const border = {top:thin, bottom:thin, left:thin, right:thin};
@@ -232,6 +232,13 @@ async function buildWorkbook(parsed){
     if (name === parsed.dataSheetName) {
       const ws = wb.addWorksheet(name.slice(0,31));
       const keys = parsed.headers.map(colKey);
+      // Rows 1-2 mirror the reference: "Year" (grey) and the period label beneath it.
+      const r1 = ws.addRow(["Year"]); r1.height = 12;
+      const r2 = ws.addRow([period || ""]); r2.height = 12;
+      [[r1.getCell(1), true], [r2.getCell(1), false]].forEach(([c, fill]) => {
+        c.font = font; c.border = border; c.numFmt = "@"; c.alignment = {horizontal:"right", vertical:"middle"};
+        if (fill) c.fill = grey;
+      });
       const hr = ws.addRow(parsed.headers); hr.height = 30;
       hr.eachCell(c => { c.font = font; c.fill = grey; c.border = border; c.numFmt = "@"; c.alignment = {horizontal:"left", vertical:"middle"}; });
       for (const r of parsed.rows) {
@@ -249,7 +256,7 @@ async function buildWorkbook(parsed){
         ws.getColumn(i+1).width = w;
       });
       const monthIdx = keys.indexOf("month");
-      ws.views = [{state:"frozen", xSplit: monthIdx >= 0 ? monthIdx + 1 : 0, ySplit: 1}];
+      ws.views = [{state:"frozen", xSplit: monthIdx >= 0 ? monthIdx + 1 : 0, ySplit: 3}];
     } else {
       const src = parsed.info.find(s => s.name === name); if (!src) continue;
       const ws = wb.addWorksheet(name.slice(0,31));
@@ -384,7 +391,7 @@ $("downloadAll").addEventListener("click", async e => {
   try {
     btn.disabled = true; st.textContent = "Building…";
     const built = [];
-    for (const it of items) built.push({name: names.get(it.id), buf: await (await buildWorkbook(it.parsed)).xlsx.writeBuffer()});
+    for (const it of items) built.push({name: names.get(it.id), buf: await (await buildWorkbook(it.parsed, $("period").value.trim())).xlsx.writeBuffer()});
     for (let i = 0; i < built.length; i++) {
       saveBlob(new Blob([built[i].buf], {type:"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"}), built[i].name);
       if (i < built.length - 1) await new Promise(r => setTimeout(r, 500));
