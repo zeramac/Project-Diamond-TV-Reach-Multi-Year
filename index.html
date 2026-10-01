@@ -91,7 +91,6 @@
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 <script>
 // ==CORE==
 /* ------------------------------------------------------------------
@@ -386,14 +385,11 @@ $("downloadAll").addEventListener("click", async e => {
     btn.disabled = true; st.textContent = "Building…";
     const built = [];
     for (const it of items) built.push({name: names.get(it.id), buf: await (await buildWorkbook(it.parsed)).xlsx.writeBuffer()});
-    if (built.length === 1) {
-      saveBlob(new Blob([built[0].buf], {type:"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"}), built[0].name);
-      st.textContent = "Downloaded";
-    } else {
-      const zip = new JSZip(); for (const b of built) zip.file(b.name, b.buf);
-      saveBlob(await zip.generateAsync({type:"blob"}), sanitizeName(category + " Monthly Reach Reports ao " + $("period").value.trim()) + ".zip");
-      st.textContent = "Downloaded " + built.length + " files as a .zip";
+    for (let i = 0; i < built.length; i++) {
+      saveBlob(new Blob([built[i].buf], {type:"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"}), built[i].name);
+      if (i < built.length - 1) await new Promise(r => setTimeout(r, 500));
     }
+    st.textContent = built.length === 1 ? "Downloaded" : "Downloaded " + built.length + " files";
   } catch (err) { st.textContent = ""; alert("Could not build the file: " + (err.message || err)); }
   btn.disabled = false;
 });
